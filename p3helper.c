@@ -37,20 +37,13 @@ int total_widgets;
 
 
 void initStudentStuff(void) {
-    /* Try to make a "name" for the semaphore that will not clash.
-       See man sem_open, and the commentary under "side effects" at the
-       beginning of this file. */
     sprintf(semaphore, "btran%s%ldmutex", COURSEID, (long) getuid);
     //CREATE AND INITIALIZE SEMAPHORES
     if ((mutex_loc = sem_open(semaphore, O_CREAT | O_RDWR | O_EXCL, S_IRUSR | S_IWUSR, 1)) == SEM_FAILED) {
-        //OPEN/ASSIGN SEMAPHORE AS READ/WRITE ONLY
         mutex_loc = sem_open(semaphore, O_RDWR);
-        //CREATE A FILE THAT WILL HOLD BOTH THE AMOUNTOFWIDGETS AND COLUMNCOUNT FOR ALL ROBOTS TO READ
         CHK(robot_info = open("robotstuff", O_RDWR));
     } else {
         //DETERMINES WHHETHER ROBOT CAN ENTER MUTEX
-        //IF SEMAPHORE IS GREATER THAN 0 THAN THE SEM. WILL DECREMENT AND THE ROBOT CAN ENTER THE MUTEX
-        //IF SEMAPHORE IS 0 THAN A ROBOT IS CURRENTLY IN MUTEX AND WILL WAIT UNTIL IT BECOMES AVAILABLE
         CHK(sem_wait(mutex_loc));
         CHK(robot_info = open("robotstuff", O_RDWR| O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR));
         mutex_counter = 0;
@@ -66,8 +59,6 @@ void initStudentStuff(void) {
 
 void placeWidget(int n) {
     //DETERMINES WHHETHER ROBOT CAN ENTER MUTEX
-    //IF SEMAPHORE IS GREATER THAN 0 THAN THE SEM. WILL DECREMENT AND THE ROBOT CAN ENTER THE MUTEX
-    //IF SEMAPHORE IS 0 THAN A ROBOT IS CURRENTLY IN MUTEX AND WILL WAIT UNTIL IT BECOMES AVAILABLE
     sem_wait(mutex_loc);
     //ROBOTS READ COUNT AND ROW FROM ROBOT_INFO
     CHK(lseek(robot_info, 0, SEEK_SET));
@@ -76,9 +67,6 @@ void placeWidget(int n) {
     //ASSIGN COUNTER TO TEMP FOR LATER WRITE INTO ROBOT INFO
     temp_counter = mutex_counter;
     total_widgets = nrRobots * quota;
-    //CHECK IF IT IS THE LAST WIDGET TO BE MADE, IF SO IT MUST END WITH AN F
-    //UNLINK THE FILE MADE TO HOLD THE COUNT AND ROWS FOR OTHER ROBOTS USAGE
-    //CLOSE THE CRITICAL REGION
     if (temp_counter == total_widgets) {
         printeger(n);
         printf("F\n");
@@ -88,15 +76,10 @@ void placeWidget(int n) {
         CHK(sem_close(mutex_loc));
         CHK(sem_unlink(semaphore));
     } else {
-        //CHECK FOR WIDGET IS THE LAST NUMBER CORRESPSONDING TO WIDTH BY USING MODULAR OPERATOR
-        // BETWEEN THE AMOUNT OF WIDGETS ALREADY PRINTED AND THE WIDTH, NUMBER OF WIDGETS IN
-        // EACH ROW, IF SO N IS PRINTED WITH A NEW LINE BEFORE THE NEXT IS PRINTED
         if (temp_counter % width == 0) {
             printeger(n);
             printf("N\n");
             fflush(stdout);
-            // IF IT REACHES THIS ELSE, THAN THE WIDGET IS NOT THE VERY LAST WIDGET MADE NOR IS
-            //IT THE LAST WIDGET IN EACH ROW, SO IT WILL JUST BE PRINTED
         } else {
             printeger(n);
             fflush(stdout);
